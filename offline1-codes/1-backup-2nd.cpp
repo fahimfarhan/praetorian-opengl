@@ -32,14 +32,6 @@ public:
     V(double u=0,double v=0, double w=0){
         x = u; y = v; z = w;
     }
-
-     V operator=(const V& b) {
-         // V v();
-         this->x = b.x;
-         this->y =  b.y;
-         this->z =  b.z;
-         return (*this);
-      }
 };
 
 P pos(10,50,10);
@@ -100,43 +92,24 @@ void keyboardListener(unsigned char key, int x,int y){
 	switch(key){
 
 		case '1':
-        { angle=-.01;
-            // u
-            pair<V,V> p1 = rotate(l,r,u);
-            l = p1.first;
-            r = p1.second;
-			}
-            break;
+            angle=-3;
+        
+			break;
         case '2':
-            {angle= +.01;
-            pair<V,V> p2 = rotate(l,r,u);
-            l = p2.first;
-            r = p2.second;
-            }break;
-        case '3': // r
-            {angle= +.01;  
-            pair<V,V> p3 = rotate(l,u,r);
-            l = p3.first;
-            u = p3.second;
-            }break;
+            angle= +3;
+			break;
+        case '3':
+            angle= +3;  
+			break;
         case '4':
-            {angle= -.01;
-            pair<V,V> p4 = rotate(l,u,r);
-            l = p4.first;
-            u = p4.second;
-            }break;
-        case '5':  // l
-            {angle= -.01;
-            pair<V,V> p5 = rotate(r,u,l);
-            r = p5.first;
-            u = p5.second;
-            }break;
+            angle= -3;
+			break;
+        case '5':
+            angle= +3;
+			break;
         case '6':
-        {angle= +.01;
-			pair<V,V> p6 = rotate(r,u,l);
-            r = p6.first;
-            u = p6.second;
-        }break;
+        angle= -3;
+			break;
         
 		default:
 			break;
@@ -257,7 +230,7 @@ int main(int argc, char **argv)
     glutDisplayFunc(start);
     glutIdleFunc(animate);
     
-    glutKeyboardFunc(keyboardListener);
+    // glutKeyboardFunc(keyboardListener);
     glutSpecialFunc(specialKeyListener);
     glutMainLoop();
     return 0;
