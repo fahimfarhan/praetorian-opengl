@@ -2,7 +2,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#include <glut.h>
+#include <GL/glut.h>
+#include <gl/Gl.h>
 #endif
 
 #ifdef linux
