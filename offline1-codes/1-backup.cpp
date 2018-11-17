@@ -204,6 +204,7 @@ void animate(){
 	glutPostRedisplay();
 }
 
+
 void rotateAlongU(){
     double rx,ry, lx,ly;
     rx = r.x*cos(angleU) - r.y*sin(angleU);

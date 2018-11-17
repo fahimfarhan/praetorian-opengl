@@ -5,10 +5,10 @@
 #include <glut.h>
 #endif
 
-// #ifdef linux
+#ifdef linux
 #include "GL/freeglut.h"
 #include "GL/gl.h"
-// #endif
+ #endif
 
 #define pi (2*acos(0.0))
 
@@ -42,7 +42,7 @@ public:
       }
 };
 
-P pos(10,50,10);
+P pos(10,20,10);
 V r(1,0,0),l(0,-1,0),u(0,0,1);
 
 void start();
@@ -55,6 +55,48 @@ void specialKeyListener(int key, int x,int y);
 void keyboardListener(unsigned char key, int x,int y);
 V cross(V A, V B);
 pair<V,V> rotate(V a, V b, V ref);
+void drawGun();
+void drawBarrel();
+void drawBody();
+
+double bodyX=0, bodyY=-10, bodyZ=0,bodyR = 10,
+barrelX=0, barrelY=-5, barrelZ=0,barrelR = 5;
+double bodyx0=0,bodyy0=0,bodyz0=0;
+
+double bodyTheta=0.01, bodyPhi=00.01, angleBarrelXY=00.01;
+// theta--> xy, phi --> yz
+void drawBody(){
+    // bodyZ;
+    glColor3f(1,01,01);
+
+    //glBegin(GL_LINES);
+    
+    //glVertex3d(bodyx0,bodyy0,bodyz0);
+    //glVertex3d(bodyX,bodyY,bodyZ);
+        
+
+    // glEnd();
+    //for(int j=0; j<36; j++)
+    for(int i=0; i<36; i++){
+        glBegin(GL_LINES);
+        glVertex3d( (bodyx0 + cos(i*pi/18) ),bodyy0 + sin(i*pi/18),bodyz0  );
+        glVertex3d( (bodyX+ cos(i*pi/18) ) ,bodyY+ sin(i*pi/18),bodyZ  );    
+        glEnd();    
+    }
+}
+
+void drawBarrel(){
+    glColor3f(1,0,0);
+
+    for(int i=0; i<36; i++){
+        glBegin(GL_LINES);
+
+        glVertex3d( (bodyX+ cos(i*pi/18) ) ,bodyY+ sin(i*pi/18),bodyZ  );    
+        glVertex3d( (bodyX+barrelX + cos(i*pi/18) ),bodyX+barrelY + sin(i*pi/18),bodyZ+barrelZ  );
+        
+        glEnd();    
+    }
+}
 
 V cross(const V A,const V B){
     V C(0,0,0);
@@ -137,7 +179,44 @@ void keyboardListener(unsigned char key, int x,int y){
             r = p6.first;
             u = p6.second;
         }break;
+        case 'q':
+        {   bodyTheta += .01;
+            bodyY = -bodyR*cos(bodyTheta)*sin(bodyPhi);
+            if(bodyY> (-.707*bodyR)){ bodyY =  -(.707*bodyR);  }
+            
+            bodyX = bodyR*sin(bodyTheta);
+            if(bodyX> (.707*bodyR)){ bodyX= (.707*bodyR);  }
+            
+        }break;  
+
+        case 'w':
+        {   bodyTheta -= .01;
+            bodyY = -bodyR*cos(bodyTheta);
+            if(bodyY> (-.707*bodyR)){ bodyY =  -(.707*bodyR);  }
+            
+            bodyX = bodyR*sin(bodyTheta);
+            if(bodyX< -(.707*bodyR)){ bodyX= -(.707*bodyR);  }
+            
+        }break;  
         
+        case 'e':
+        {   bodyPhi += .01;
+            
+            bodyZ = bodyR*sin(bodyPhi);
+            if(bodyZ> (0.707*bodyR)){ bodyZ= (0.707*bodyR);  }
+            //bodyZ+=.01;
+            //if(bodyZ> (0.707*bodyR)){ bodyZ= (0.707*bodyR);  }
+            
+        }break;
+        case 'r':
+        {   bodyPhi -= .01;
+            
+            bodyZ = bodyR*sin(bodyPhi);
+            if(bodyZ< -(0.707*bodyR)){ bodyZ= -(0.707*bodyR);  }
+            //bodyZ+=.01;
+            //if(bodyZ> (0.707*bodyR)){ bodyZ= (0.707*bodyR);  }
+            
+        }break;     
 		default:
 			break;
 	}
@@ -183,6 +262,51 @@ void specialKeyListener(int key, int x,int y){
 	}
 }
 
+/*
+
+void rotateAlongU(){
+    double rx,ry, lx,ly;
+    rx = r.x*cos(angleU) - r.y*sin(angleU);
+    ry = r.y*cos(angleU) + r.x*sin(angleU);
+
+    lx = l.x*cos(angleU) - l.y*sin(angleU);
+    ly = l.y*cos(angleU) + l.x*sin(angleU);
+
+    r.x = rx; r.y = ry;
+    l.x = lx; l.y = ly;
+}
+
+void rotateAlongR(){
+    // l-->x, u --> y
+    double ux,uy, lx,ly;
+    lx = l.x*cos(angleR) - l.y*sin(angleR);
+    ly = l.x*sin(angleR) + l.y*cos(angleR);
+
+    ux = u.x*cos(angleR) - u.y*sin(angleR);
+    uy = u.x*sin(angleR) + u.y*cos(angleR);
+
+    l.x = lx; l.y = ly;
+    u.x = ux; u.y = uy;
+
+}
+
+
+void rotateAlongL(){
+    // u-->x , r --> y  
+    double ux,uy, rx,ry;
+    ux = u.x*cos(angleL)-u.y*sin(angleL);
+    uy = u.x*sin(angleL)+u.y*cos(angleL);
+
+    rx = r.x*cos(angleL) - r.y*sin(angleL);
+    ry = r.x*sin(angleL) + r.y*cos(angleL);
+
+    u.x = ux; u.y = uy;
+    r.x = rx; r.y = ry;
+
+}
+
+
+*/
 
 void start(){
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -202,6 +326,9 @@ void start(){
     // glClear(GL_COLOR_BUFFER_BIT);
     drawAxes();
     drawSquare(20);
+
+    drawBody();
+     drawBarrel();
 
     glutSwapBuffers();
 }
