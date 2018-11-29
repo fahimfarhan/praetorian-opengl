@@ -1,14 +1,9 @@
-#include <bits/stdc++.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<math.h>
 
-#ifdef _WIN32
 #include <windows.h>
 #include <glut.h>
-#endif
-
-//#ifdef linux
-#include "GL/freeglut.h"
-#include "GL/gl.h"
-//#endif
 
 #define pi (2*acos(0.0))
 
@@ -17,6 +12,7 @@ double cameraAngle;
 int drawgrid;
 int drawaxes;
 double angle;
+double t;
 
 struct point
 {
@@ -200,6 +196,17 @@ void drawSS()
     drawSquare(5);
 }
 
+void shm()
+{
+    glBegin(GL_LINES);
+    {
+        glVertex3f(0,0,0);
+        glVertex3f(0,0,50*sin(t));
+    }
+    glEnd();
+
+}
+
 void keyboardListener(unsigned char key, int x,int y){
 	switch(key){
 
@@ -293,8 +300,8 @@ void display(){
 	//3. Which direction is the camera's UP direction?
 
 	//gluLookAt(100,100,100,	0,0,0,	0,0,1);
-	//gluLookAt(200*cos(cameraAngle), 200*sin(cameraAngle), cameraHeight,		0,0,0,		0,0,1);
-	gluLookAt(0,0,200,	0,0,0,	0,1,0);
+	gluLookAt(200*cos(cameraAngle), 200*sin(cameraAngle), cameraHeight,		0,0,0,		0,0,1);
+	//gluLookAt(0,0,200,	0,0,0,	0,1,0);
 
 
 	//again select MODEL-VIEW
@@ -306,20 +313,13 @@ void display(){
 	****************************/
 	//add objects
 
+    glColor3f(0.5,0.5,0.5);
+	glLineWidth(1.0);
 	drawAxes();
-	drawGrid();
-	drawCircle(10,50);
 
-    //glColor3f(1,0,0);
-    //drawSquare(10);
-
-   // drawSS();
-
-    //drawCircle(30,24);
-
-    //drawCone(20,50,24);
-
-	//drawSphere(30,24,20);
+    glColor3f(1.0,1.0,1.0);
+    glLineWidth(5.0);
+    shm();
 
 
 
@@ -330,7 +330,7 @@ void display(){
 
 
 void animate(){
-	angle+=0.05;
+	t+=0.01;
 	//codes for any changes in Models, Camera
 	glutPostRedisplay();
 }
@@ -338,6 +338,7 @@ void animate(){
 void init(){
 	//codes for initialization
 	drawgrid=0;
+	t=0;
 	drawaxes=1;
 	cameraHeight=150.0;
 	cameraAngle=1.0;

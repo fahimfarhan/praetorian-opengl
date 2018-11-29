@@ -20,7 +20,7 @@ double angle=0;
 class P{
 public:
     double x,y,z;
-    P(){    x=0; y=0; z=0;  }
+    // P(){    x=0; y=0; z=0;  }
     P(double u=0,double v=0, double w=0){
         x = u; y = v; z = w;
     }
@@ -45,11 +45,11 @@ public:
 
 P pos(10,20,10);
 V r(1,0,0),l(0,-1,0),u(0,0,1);
-
+double xt,yt; double rt, at;
 void start();
 void init();
 void animate();
-void init();
+void dolna();
 void drawAxes();
 void drawSquare(double a);
 void specialKeyListener(int key, int x,int y);
@@ -99,6 +99,31 @@ void drawBarrel(){
     }
 }
 
+void drawCircle(double radius,int segments)
+{
+    int i;
+    P points[100];
+    glColor3f(0.7,0.7,0.7);
+    //generate points
+    for(i=0;i<=segments;i++)
+    {
+        points[i].x= radius*cos(((double)i/(double)segments)*2*pi);
+        points[i].y= radius*sin(((double)i/(double)segments)*2*pi);
+    }
+    //draw segments using generated points
+    glRotatef(2*at,0,0,1);
+    for(i=0;i<segments;i++)
+    {
+        
+        glBegin(GL_LINES);
+        {
+			glVertex3f(points[i].x,points[i].y,0);
+			glVertex3f(points[i+1].x,points[i+1].y,0);
+        }
+        glEnd();
+    }
+}
+
 V cross(const V A,const V B){
     V C(0,0,0);
 
@@ -139,85 +164,44 @@ void drawSquare(double a)
 	}glEnd();
 }
 
+int state;
 void keyboardListener(unsigned char key, int x,int y){
 	switch(key){
 
+case '0':
+        {
+            state = 0;
+            at = at-.5;//min(.05, at+.01);
+            dolna();
+        }
+            break;
 		case '1':
-        { angle=-.01;
-            // u
-            pair<V,V> p1 = rotate(l,r,u);
-            l = p1.first;
-            r = p1.second;
-			}
+        {
+            state = 1;
+            at = at+.5;//min(.05, at+.01);
+            dolna();
+        }
             break;
         case '2':
-            {angle= +.01;
-            pair<V,V> p2 = rotate(l,r,u);
-            l = p2.first;
-            r = p2.second;
-            }break;
+        break;
         case '3': // r
-            {angle= +.01;  
-            pair<V,V> p3 = rotate(l,u,r);
-            l = p3.first;
-            u = p3.second;
-            }break;
+        break;
         case '4':
-            {angle= -.01;
-            pair<V,V> p4 = rotate(l,u,r);
-            l = p4.first;
-            u = p4.second;
-            }break;
+        break;
         case '5':  // l
-            {angle= -.01;
-            pair<V,V> p5 = rotate(r,u,l);
-            r = p5.first;
-            u = p5.second;
-            }break;
+        break;
         case '6':
-        {angle= +.01;
-			pair<V,V> p6 = rotate(r,u,l);
-            r = p6.first;
-            u = p6.second;
-        }break;
+        break;
         case 'q':
-        {   bodyTheta += .01;
-            bodyY = -bodyR*cos(bodyTheta)*sin(bodyPhi);
-            if(bodyY> (-.707*bodyR)){ bodyY =  -(.707*bodyR);  }
-            
-            bodyX = bodyR*sin(bodyTheta);
-            if(bodyX> (.707*bodyR)){ bodyX= (.707*bodyR);  }
-            
-        }break;  
+        break;  
 
         case 'w':
-        {   bodyTheta -= .01;
-            bodyY = -bodyR*cos(bodyTheta);
-            if(bodyY> (-.707*bodyR)){ bodyY =  -(.707*bodyR);  }
-            
-            bodyX = bodyR*sin(bodyTheta);
-            if(bodyX< -(.707*bodyR)){ bodyX= -(.707*bodyR);  }
-            
-        }break;  
+        break;  
         
         case 'e':
-        {   bodyPhi += .01;
-            
-            bodyZ = bodyR*sin(bodyPhi);
-            if(bodyZ> (0.707*bodyR)){ bodyZ= (0.707*bodyR);  }
-            //bodyZ+=.01;
-            //if(bodyZ> (0.707*bodyR)){ bodyZ= (0.707*bodyR);  }
-            
-        }break;
+        break;
         case 'r':
-        {   bodyPhi -= .01;
-            
-            bodyZ = bodyR*sin(bodyPhi);
-            if(bodyZ< -(0.707*bodyR)){ bodyZ= -(0.707*bodyR);  }
-            //bodyZ+=.01;
-            //if(bodyZ> (0.707*bodyR)){ bodyZ= (0.707*bodyR);  }
-            
-        }break;     
+        break;     
 		default:
 			break;
 	}
@@ -328,10 +312,18 @@ void start(){
     drawAxes();
     drawSquare(20);
 
-    drawBody();
-     drawBarrel();
+    drawCircle(05,6);
+    //drawBody();
+    // drawBarrel();
 
     glutSwapBuffers();
+}
+
+void dolna(){
+    
+    // while(true){
+       
+     // }
 }
 
 void drawAxes(){
@@ -356,6 +348,8 @@ void drawAxes(){
 
 void animate(){
     angle += 0.05;
+    if(state){ at= ((at+.5)> 02)?(at+.5):2; }
+    else{   at= ((at-.5)> 0)?(at-.5):0;}
 	//codes for any changes in Models, Camera
 	glutPostRedisplay();
 }
@@ -379,7 +373,7 @@ int main(int argc, char **argv)
 
 
     glutCreateWindow("START - 1");
-
+    rt = 5; at = 0;
     init();
     glEnable(GL_DEPTH_TEST);
     glutDisplayFunc(start);

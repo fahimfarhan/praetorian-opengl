@@ -12,16 +12,51 @@
 
 #define pi (2*acos(0.0))
 
+using namespace std;
+
+
 double cameraHeight;
 double cameraAngle;
 int drawgrid;
 int drawaxes;
 double angle;
+double t, omega;
 
 struct point
 {
 	double x,y,z;
 };
+
+
+void drawSpring(double radius,int segments)
+{
+    int i;
+    struct point points[500];
+    glColor3f(0.7,0.7,0.7);
+    //generate points
+	float deltaZ = 0;
+    for(i=0;i<=segments;i++)
+    {
+        points[i].x=radius*cos(((double)i/(double)segments)*2*pi*5);
+        points[i].y=radius*sin(((double)i/(double)segments)*2*pi*5);
+		points[i].z=deltaZ;
+		// points[i].z = -abs(points[i].z);
+		deltaZ=deltaZ-1.5 + .5*sin(t*pi/180);  // 5 loop --> 50, so 1 loop --> 10.
+		
+    }
+    //draw segments using generated points
+    for(i=0;i<segments;i++)
+    {
+        glBegin(GL_LINES);
+        {
+			glVertex3f(points[i].x,points[i].y,points[i].z);
+			glVertex3f(points[i+1].x,points[i+1].y,points[i+1].z);
+        }
+        glEnd();
+    }
+}
+
+
 
 
 void drawAxes()
@@ -200,11 +235,37 @@ void drawSS()
     drawSquare(5);
 }
 
+void shm()
+{
+    glBegin(GL_LINES);
+    {
+        glVertex3f(0,0,0);
+        glVertex3f(0,0,50*sin(t));
+    }
+    glEnd();
+
+}
+
 void keyboardListener(unsigned char key, int x,int y){
 	switch(key){
 
 		case '1':
-			drawgrid=1-drawgrid;
+		{
+				//drawgrid=1-drawgrid;
+			omega+=1;
+			//omega = min(omega,5);
+			omega = omega>5?5:omega;
+		
+		}
+			break;
+		case '2':
+		{
+				//drawgrid=1-drawgrid;
+			omega-=1;
+			//omega = min(omega,5);
+			omega = omega<1?1:omega;
+		
+		}
 			break;
 
 		default:
@@ -272,7 +333,7 @@ void mouseListener(int button, int state, int x, int y){	//x, y is the x-y of th
 
 
 void display(){
-
+	omega = .01;
 	//clear the display
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0,0,0,0);	//color black
@@ -293,8 +354,8 @@ void display(){
 	//3. Which direction is the camera's UP direction?
 
 	//gluLookAt(100,100,100,	0,0,0,	0,0,1);
-	//gluLookAt(200*cos(cameraAngle), 200*sin(cameraAngle), cameraHeight,		0,0,0,		0,0,1);
-	gluLookAt(0,0,200,	0,0,0,	0,1,0);
+	gluLookAt(200*cos(cameraAngle), 200*sin(cameraAngle), cameraHeight,		0,0,0,		0,0,1);
+	//gluLookAt(0,0,200,	0,0,0,	0,1,0);
 
 
 	//again select MODEL-VIEW
@@ -306,20 +367,14 @@ void display(){
 	****************************/
 	//add objects
 
+    glColor3f(0.5,0.5,0.5);
+	glLineWidth(1.0);
 	drawAxes();
-	drawGrid();
-	drawCircle(10,50);
 
-    //glColor3f(1,0,0);
-    //drawSquare(10);
-
-   // drawSS();
-
-    //drawCircle(30,24);
-
-    //drawCone(20,50,24);
-
-	//drawSphere(30,24,20);
+    glColor3f(1.0,1.0,1.0);
+    glLineWidth(5.0);
+    // shm();
+	drawSpring(50,100);
 
 
 
@@ -330,7 +385,7 @@ void display(){
 
 
 void animate(){
-	angle+=0.05;
+	t+=omega;
 	//codes for any changes in Models, Camera
 	glutPostRedisplay();
 }
@@ -338,6 +393,7 @@ void animate(){
 void init(){
 	//codes for initialization
 	drawgrid=0;
+	t=0;
 	drawaxes=1;
 	cameraHeight=150.0;
 	cameraAngle=1.0;
@@ -364,6 +420,8 @@ void init(){
 }
 
 int main(int argc, char **argv){
+	omega = 1; // degree
+	t = 1;
 	glutInit(&argc,argv);
 	glutInitWindowSize(500, 500);
 	glutInitWindowPosition(0, 0);
