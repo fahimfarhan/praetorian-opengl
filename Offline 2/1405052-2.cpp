@@ -220,6 +220,28 @@ void initCurve(){
 		cy = dy1;
 		dy = y1;
 		double t = 0;
+
+		/*FAILED!!!*/
+/*
+	   double delta = .1, delta2 = delta*delta, delta3 = delta2*delta;
+
+		double dfx = ax*delta3 + bx*delta3 + cx*delta;
+		double dfx2 = 6*ax*delta3 +2*bx*delta2;
+		double dfx3 = 6*ax*delta3;
+
+		dp[k][01][0].x = dfx;
+		dp[k][02][0].x = dfx2;
+		dp[k][03][0].x = dfx3; 
+
+		double dfy = ay*delta3 + by*delta3 + cy*delta;
+		double dfy2 = 6*ay*delta3 +2*by*delta2;
+		double dfy3 = 6*ay*delta3;
+
+		dp[k][01][0].y = dfy;
+		dp[k][02][0].y = dfy2;
+		dp[k][03][0].y = dfy3;
+		*/
+
 	   // initialize dp
 	   for(int i=0; i<4; i++){  // 4 er jaygay 10 hobe
 		    dp[k][0][i].x = ax*t*t*t + bx*t*t + cx*t + dx; 
