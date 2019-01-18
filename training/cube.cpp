@@ -6,13 +6,17 @@
 //
 // g++ cube.cc -lm -lglut -lGL -lGLU -o cube
 
-#define GL_GLEXT_PROTOTYPES
-#ifdef __APPLE__
-#include <GLUT/glut.h>
-#else
-#include <GL/glut.h>
+#include <bits/stdc++.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <glut.h>
 #endif
-#include <math.h>
+
+//#ifdef linux
+#include "GL/freeglut.h"
+#include "GL/gl.h"
+//#endif
 
 // Rotate X
 double rX=0;
