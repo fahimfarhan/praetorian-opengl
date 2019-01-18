@@ -1,22 +1,15 @@
-#include <bits/stdc++.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#include <glut.h>
-#endif
-
-//#ifdef linux
-#include "GL/freeglut.h"
-#include "GL/gl.h"
-//#endif
-
+#include <iostream>
+#include <fstream>
+#include <cassert>
+#include <iomanip>
+#include <cmath>
+#include <stack>
+#include <queue>
 #include "bitmap_image.hpp"
 using namespace std;
 
 #define pi (2*acos(0.0))
 #define epsilon (1.0e-6)
-
-stack <matrix> matrixstack;
 
 class homogeneous_point
 {
@@ -415,34 +408,6 @@ void stage1()
     // take other commands as input from scene in a loop
     // process accordingly
     // write to stage1
-    double a,b,c;
-
-    // init empty matrix : done on global scope!
-    matrix m(4);
-    matrix identityMatrix(4);
-    identityMatrix = identityMatrix.make_identity(4);
-    matrixstack.push(identityMatrix);
-    while(true){
-        scene >> command;
-        if(command == "triangle"){
-            homogeneous_point hp[3];
-            for(int i=0; i<3; i++){
-                scene >>hp[i].x >>hp[i].y >> hp[i].z;
-                homogeneous_point p1 = matrixstack.top()*hp[i];
-                stage1 << p1.x << p1.y << p1.z <<"\n";
-            }
-            scene >> a >> b >> c;
-            color mycolor(a,b,c);
-
-
-        }
-        else if(command == ""){}
-        else if(command == ""){}
-        else if(command == ""){}
-        else if(command == ""){}
-        else if(command == ""){}
-        else if(command == "end"){  break; }
-    }
 
     scene.close();
     stage1.close();
