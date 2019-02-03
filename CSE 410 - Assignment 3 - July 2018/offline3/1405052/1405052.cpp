@@ -1,10 +1,15 @@
-#include <iostream>
-#include <fstream>
-#include <cassert>
-#include <iomanip>
-#include <cmath>
-#include <stack>
-#include <queue>
+#include <bits/stdc++.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <glut.h>
+#endif
+
+//#ifdef linux
+#include "GL/freeglut.h"
+#include "GL/gl.h"
+//#endif
+
 #include "bitmap_image.hpp"
 using namespace std;
 
@@ -17,13 +22,13 @@ public:
     double x, y, z, w;
 
     // set the three coordinates, set w to 1
-    homogeneous_point(double x, double y, double z)
+    /*homogeneous_point(double x, double y, double z)
     {
         this->x = x;
         this->y = y;
         this->z = z;
         this->w = 1;
-    }
+    }*/
 
     /*
     default constructor. does nothing. allows declarations like below:
@@ -31,11 +36,12 @@ public:
     therefore, usage is dangerous
     */
     homogeneous_point() {
+        w=1;
     }
 
     // constructs a homogeneous point with given coordinates. forces w to be 1.0
     // if w is zero, raises error
-    homogeneous_point(double x, double y, double z, double w)
+    homogeneous_point(double x, double y, double z, double w=1)
     {
         assert (w != 0);
         this->x = x/w;
@@ -65,6 +71,17 @@ public:
         homogeneous_point p(x, y, z, w);
     }
 
+    homogeneous_point operator= (const homogeneous_point& point)
+    {
+        this->x = point.x;
+    this->y = point.y;
+        this->z = point.z;
+        this->w = point.w;
+        return *this;
+    }
+
+    
+
     // Print the coordinates of a point. exists for testing purpose.
     void print()
     {
@@ -81,7 +98,7 @@ public:
     double x, y, z;
 
     // constructs a vector with given components
-    Vector(double x, double y, double z) {
+    Vector(double x=0, double y=0, double z=0) {
         this->x = x;
         this->y = y;
         this->z = z;
@@ -128,6 +145,26 @@ public:
     {
         Vector v(a.y*b.z - a.z*b.y, b.x*a.z - b.z*a.x, a.x*b.y - a.y*b.x);
         return v;
+    }
+
+    Vector operator= (const Vector& point)
+    {
+        this->x = point.x;
+        this->y = point.y;
+        this->z = point.z;
+        return *this;
+    }
+
+    static Vector R(Vector x, Vector a, double angle){
+        Vector c,d,e,ret;
+         c = x*cos(angle);
+         d = a*dot(a,x);
+        d = d*(1.0-cos(angle));
+         e = (cross(x,a));
+        e = e*sin(angle);
+
+        ret = c + d + e;
+        return ret; 
     }
 
     // print a vector. only for testing purposes.
@@ -180,6 +217,18 @@ public:
             }
         }
         return m;
+    }
+    void make_identity(){
+        for (int i = 0; i < this->num_rows; i++)
+        {
+            for (int j = 0; j < this->num_cols; j++)
+            {
+                if (i == j)
+                    this->values[i][j] = 1;
+                else
+                    this->values[i][j] = 0;
+            }
+        }
     }
 
     // print the matrix. exists for testing purposes
@@ -260,6 +309,19 @@ public:
         return m1;
     }
 
+     matrix operator= (const matrix& m)
+    {
+        this->num_cols = m.num_cols;
+        this->num_rows = m.num_rows;
+
+        for(int i=0; i<m.num_rows; i++){
+            for(int j=0; j<m.num_cols; j++){
+                this->values[i][j] = m.values[i][j];
+            }
+        }
+        return *this;
+    }
+
     // multiply a 4x4 matrix with a homogeneous point and return the resulting point.
     // usage: homogeneous_point p = m * p1;
     // here, m is a 4x4 matrix, intended to be the transformation matrix
@@ -307,7 +369,29 @@ public:
     }
     color() {
     }
+
+    color operator=(const color& v)
+    {
+        //Vector v1(v.x, v.y, v.z);
+        this->r = v.r; this->g = v.g; this->b = v.b;// this->w = w;
+        return *this;
+    }
 };
+
+// my classes 
+class MyTriangle{
+public:
+    homogeneous_point p1,p2,p3;
+    color c;
+    MyTriangle(){}
+    MyTriangle(homogeneous_point p1, homogeneous_point p2, homogeneous_point p3, color c){
+        this->c = c;
+        this->p1 = p1;
+        this->p2 = p2;
+        this->p3 = p3;
+    }
+};
+// my classes end
 
 
 double eye_x, eye_y, eye_z;
@@ -317,6 +401,11 @@ double fov_x, fov_y, aspectRatio, near, far;
 color backgroud;
 int screen_x, screen_y;
 
+stack <matrix> ms;
+
+int stackpushposition;
+
+vector<MyTriangle> mt, mt1;
 
 
 void scan_convert() {
@@ -338,6 +427,8 @@ void scan_convert() {
 
     // perform scan conversion, populate the 2D array pixels
     // the array zs is the z-buffer.
+
+
     // the following code generates a bmp image. do not change this.
     bitmap_image image(screen_x, screen_y);
     for (int x = 0; x < screen_x; x++) {
@@ -354,6 +445,8 @@ void scan_convert() {
 
 void stage3()
 {
+    cout<<"--------Stage 3--------\n";
+
     if (near == far) return;
     ifstream stage2;
     ofstream stage3;
@@ -363,6 +456,40 @@ void stage3()
     stage3 << std::setprecision(7);
 
     // process input from stage2 and write to stage3
+    fov_x = fov_y * aspectRatio;
+    double t,r;
+    t = near*tan(fov_y/2);
+    r = far*tan(fov_x/2);
+
+    matrix PM(4,4);
+    for(int i=0; i<4; i++){ for(int j=0; j<4; j++) PM.values[i][j] = 0; }
+    PM.values[0][0] = near/r;
+    PM.values[01][01] = near/t;
+    PM.values[02][02] = -( far + near ) /( far - near );
+    PM.values[02][03] = -( 2 * far * near ) /( far - near );
+    PM.values[03][02] = -1;
+
+    //
+ double d, in_[9];
+    int count=8;
+    while(stage2 >> d){
+        count = (count+1)%9;
+        in_[count] = d;
+        if(count == 8){
+            homogeneous_point temp1(in_[0], in_[1],in_[2],1);
+            homogeneous_point temp2(in_[03], in_[4],in_[5],1);
+            homogeneous_point temp3(in_[6], in_[7],in_[8],1);
+
+            temp1 = PM*temp1;
+            temp2 = PM*temp2;
+            temp3 = PM*temp3;
+            stage3 << temp1.x <<" "<< temp1.y<<" " << temp1.z << "\n";
+            stage3 << temp2.x <<" "<< temp2.y<<" " << temp2.z << "\n";
+            stage3 << temp3.x <<" "<< temp3.y<<" " << temp3.z << "\n";
+            stage3<<"\n";
+        }
+    }
+    //
 
     stage3.close();
     stage2.close();
@@ -371,6 +498,8 @@ void stage3()
 
 void stage2()
 {
+    cout<<"\n\n------Stage 2--------\n\n";
+
     ifstream stage1;
     ofstream stage2;
     stage1.open ("stage1.txt");
@@ -379,6 +508,50 @@ void stage2()
     stage2 << std::setprecision(7);
 
     // collect input from stage1 and process, write output to stage2
+    Vector l(look_x-eye_x, look_y-eye_y, look_z-eye_z);
+    l.normalize();
+    Vector up(up_x, up_y, up_z);
+    Vector r = r.cross(l,up);
+    r.normalize();
+    Vector u;
+    u = u.cross(r,l);
+    u.normalize();
+
+    matrix T(4);
+    T.make_identity();
+    T.values[0][3]=-eye_x;
+    T.values[01][3]=-eye_y;
+    T.values[02][3]=-eye_z;
+    T.values[3][3] = 1;
+    matrix R(4);
+    R.make_identity();
+    R.values[0][0] = r.x;R.values[0][01] = r.y;R.values[0][02] = r.z;
+    R.values[01][0] = u.x;R.values[01][01] = u.y;R.values[01][02] = u.z;
+    R.values[02][0] = -l.x;R.values[02][01] = -l.y;R.values[02][02] = -l.z; 
+    R.values[3][3] = 1;
+    matrix V(4);
+    V.make_identity();
+    V = R*T;
+
+    double d, in_[9];
+    int count=8;
+    while(stage1 >> d){
+        count = (count+1)%9;
+        in_[count] = d;
+        if(count == 8){
+            homogeneous_point temp1(in_[0], in_[1],in_[2],1);
+            homogeneous_point temp2(in_[03], in_[4],in_[5],1);
+            homogeneous_point temp3(in_[6], in_[7],in_[8],1);
+
+            temp1 = V*temp1;
+            temp2 = V*temp2;
+            temp3 = V*temp3;
+            stage2 << temp1.x <<" "<< temp1.y<<" " << temp1.z << "\n";
+            stage2 << temp2.x <<" "<< temp2.y<<" " << temp2.z << "\n";
+            stage2 << temp3.x <<" "<< temp3.y<<" " << temp3.z << "\n";
+            stage2<<"\n";
+        }
+    }
 
     stage1.close();
     stage2.close();
@@ -406,6 +579,106 @@ void stage1()
     // take other commands as input from scene in a loop
     // process accordingly
     // write to stage1
+    matrix I(4,4);
+    I.make_identity();
+    ms.push(I);
+    I.print();
+    while(true){
+        scene >> command;
+        if(command == "triangle"){
+            homogeneous_point in[3], out[3];
+            color c;
+            for(int i=0; i<3; i++){
+                scene >> in[i].x >> in[i].y >> in[i].z;
+
+            }
+            int r,g,b;
+            scene >> r >> g >> b;
+            c.r = r; c.g = g; c.b = b;
+            matrix A = ms.top();
+            for(int i=0; i<3; i++){
+                out[i] = A*in[i];
+                stage1 << out[i].x<<" " << out[i].y<<" " << out[i].z<<"\n";
+            }
+            stage1<<"\n";
+            MyTriangle mtin(in[0], in[1], in[2], c), mtout(out[0], out[1], out[2], c);
+            mt.push_back(mtin);
+            mt1.push_back(mtout);
+
+        }else if(command == "translate"){
+             double tx, ty, tz;
+            scene >> tx >> ty >> tz;    // input translation amount 
+            // generate xlation matrix
+            matrix T(4);
+            T.make_identity();
+            T.values[0][3] = tx; 
+            T.values[01][3] = ty; 
+            T.values[02][3] = tz; 
+            T.values[03][3] = 1; 
+
+            matrix A(4);
+            A = ms.top();
+            A = A*T;
+            ms.push(A);
+            cout<<"Debug T\n";
+            ms.top().print();
+        }else if(command == "scale"){
+            double sx, sy,sz;
+            scene >> sx >> sy >> sz;
+            matrix T(4);
+            T.make_identity();
+            T.values[0][3] = sx; 
+            T.values[01][3] = sy; 
+            T.values[02][3] = sz; 
+            T.values[03][3] = 1; 
+
+            matrix A(4);
+            A = ms.top();
+            A = A*T;
+            ms.push(A);
+            cout<<"Debug S\n";
+            ms.top().print();
+
+        }else if(command == "rotate"){
+            double angle,  ax, ay, az;
+
+            scene >>angle>>ax>>ay>>az;
+
+            angle = pi*angle/180;
+
+            Vector a(ax,ay,az);
+            a.normalize();
+            Vector i(1,0,0), j(0,1,0), k(0,0,1); 
+            Vector c1,c2,c3;
+            
+            c1 = a.R(i,a,angle);
+            c2 = a.R(j,a,angle);
+            c3 = a.R(k,a,angle);
+
+            matrix T(4);
+
+            T.values[00][0] = c1.x; T.values[00][01] = c1.y; T.values[00][02] = c1.z; T.values[00][03] = 0;
+            T.values[01][0] = c2.x; T.values[01][01] = c2.y; T.values[01][02] = c2.z; T.values[01][03] = 0;
+            T.values[02][0] = c3.x; T.values[02][01] = c3.y; T.values[02][02] = c3.z; T.values[02][03] = 0;
+            T.values[03][0] = 0;    T.values[03][01] = 0;    T.values[03][02] = 0;    T.values[03][03] = 1;
+            
+             matrix A(4);
+            A = ms.top();
+            A = A*T;
+            ms.push(A);
+            cout<<"Debug R\n";
+            A.print();
+        }else if(command == "push"){
+            stackpushposition = ms.size();
+        }else if(command == "pop"){
+             while(ms.size()>stackpushposition){
+                ms.pop();
+            }
+
+        }else if(command == "end"){
+            break; 
+        } 
+    }
 
     scene.close();
     stage1.close();

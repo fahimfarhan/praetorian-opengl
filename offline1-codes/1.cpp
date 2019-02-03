@@ -227,27 +227,40 @@ void specialKeyListener(int key, int x,int y){
 	switch(key){
 		case GLUT_KEY_DOWN:		//down arrow key
 			// cameraHeight -= 3.0;
-            pos.y+=.5;
+            pos.y += u.y;
+            pos.x += u.x;
+            pos.z += u.z;
             //glTranslatef(pos.x,pos.y,pos.z);
 			break;
 		case GLUT_KEY_UP:		// up arrow key
 			// cameraHeight += 3.0;
             // glTranslatef(pos.x,pos.y,pos.z);
-            pos.y-=.5;
+            //pos.y-=.5;
+            pos.y -= u.y;
+            pos.x -= u.x;
+            pos.z -= u.z;
 			break;
 
 		case GLUT_KEY_RIGHT:
-			pos.x -= .5;
+			pos.y += r.y;
+            pos.x += r.x;
+            pos.z += r.z;
 			break;
 		case GLUT_KEY_LEFT:
-			pos.x += .5;
+			pos.y -= r.y;
+            pos.x -= r.x;
+            pos.z -= r.z;
 			break;
 
 		case GLUT_KEY_PAGE_UP:
-            pos.z+=.5;
+            pos.y += l.y;
+            pos.x += l.x;
+            pos.z += l.z;
 			break;
 		case GLUT_KEY_PAGE_DOWN:
-			pos.z-=.5;
+			pos.y -= l.y;
+            pos.x -= l.x;
+            pos.z -= l.z;
             break;
 
 		case GLUT_KEY_INSERT:
