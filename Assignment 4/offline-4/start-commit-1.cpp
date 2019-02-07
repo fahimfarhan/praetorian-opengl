@@ -43,15 +43,12 @@ void myDrawSpheres();
 void myDrawPyramids();
 void myDrawGrid();
 void drawSquare(double a, double b, double c, bool toogle);
-void imageGenerationSphere();
+void imageGeneration();
 void doAfterTakingInput();
 void myDrawLight();
 void myDrawSpotlight();
 void actuallyDrawImage();
-void resetPointColorBuffer();
-void createDynamicArray();
-void myDestructor();
-void imageGenerationCheckerBoard();
+
 
 class Color {
 public:
@@ -126,42 +123,10 @@ public:
     }
 };
 
-class mySquare{
-public:
-    double x,y,l;
-    bool toogle;
-    double r,b,g;
-    mySquare(double a=0, double b=0, double c=0, bool toogle=false){
-        this->x = a;
-        this->y = b;
-        this->l = c;
-        this->toogle=toogle;
-        if(!(this->toogle)){
-            r=0; b=0; g=0;
-        }else{
-            r=1; b=1; g=1;
-        }
-    }
-
-    void setter(double a=0, double b=0, double c=0, bool toogle=false){
-        this->x = a;
-        this->y = b;
-        this->l = c;
-        this->toogle=toogle;
-        if(!(this->toogle)){
-            r=0; b=0; g=0;
-        }else{
-            r=1; b=1; g=1;
-        }
-    }
-};
-
 vector<mySphere> ms;
 vector<myPyramid> mp;
-mySquare **msq;
 vector<light> vl;
 vector<spotlight> vsl;
-
 
 
 
@@ -385,7 +350,181 @@ homogeneous_point **pointBuffer;
 The matrices are forced to be 4x4. This is because in this assignment, we will deal with points in triangles.
 Maximum # of points that we will deal with at once is 3. And all the standard matrices are 4x4 (i.e. scale, translation, rotation etc.)
 */
+class matrix
+{
+public:
+    double values[4][4];
+    int num_rows, num_cols;
 
+    // only set the number of rows and cols
+    matrix(int rows, int cols)
+    {
+        assert (rows <= 4 && cols <= 4);
+        num_rows = rows;
+        num_cols = cols;
+    }
+
+    // prepare an nxn square matrix
+    matrix(int n)
+    {
+        assert (n <= 4);
+        num_rows = num_cols = n;
+    }
+
+    // prepare and return an identity matrix of size nxn
+    static matrix make_identity(int n)
+    {
+        assert (n <= 4);
+        matrix m(n);
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < n; j++)
+            {
+                if (i == j)
+                    m.values[i][j] = 1;
+                else
+                    m.values[i][j] = 0;
+            }
+        }
+        return m;
+    }
+    void make_identity(){
+        for (int i = 0; i < this->num_rows; i++)
+        {
+            for (int j = 0; j < this->num_cols; j++)
+            {
+                if (i == j)
+                    this->values[i][j] = 1;
+                else
+                    this->values[i][j] = 0;
+            }
+        }
+    }
+
+    // print the matrix. exists for testing purposes
+    void print()
+    {
+        cout << "Matrix:" << endl;
+        for (int i = 0; i < num_rows; i++)
+        {
+            for (int j = 0; j < num_cols; j++)
+            {
+                cout << values[i][j] << "\t";
+            }
+            cout << endl;
+        }
+    }
+
+    // add the two matrices. Raise error if dimension mismatches
+    matrix operator+ (const matrix& m)
+    {
+        assert (this->num_rows == m.num_rows);
+        assert (this->num_cols == m.num_cols);
+
+        matrix m1(num_rows, num_cols);
+        for (int i = 0; i < num_rows; i++)
+        {
+            for (int j = 0; j < num_cols; j++)
+            {
+                m1.values[i][j] = values[i][j] + m.values[i][j];
+            }
+        }
+        return m1;
+    }
+
+    // subtract a matrix from another. raise error if dimension mismatches
+    matrix operator- (const matrix& m)
+    {
+        assert (this->num_rows == m.num_rows);
+        assert (this->num_cols == m.num_cols);
+
+        matrix m1(num_rows, num_cols);
+        for (int i = 0; i < num_rows; i++)
+        {
+            for (int j = 0; j < num_cols; j++)
+            {
+                m1.values[i][j] = values[i][j] - m.values[i][j];
+            }
+        }
+        return m1;
+    }
+
+    // multiply two matrices. allows statements like m1 = m2 * m3; raises error is dimension mismatches
+    matrix operator* (const matrix& m)
+    {
+        assert (this->num_cols == m.num_rows);
+        matrix m1(this->num_rows, m.num_cols);
+
+        for (int i = 0; i < m1.num_rows; i++) {
+            for (int j = 0; j < m1.num_cols; j++) {
+                double val = 0;
+                for (int k = 0; k < this->num_cols; k++) {
+                    val += this->values[i][k] * m.values[k][j];
+                }
+                m1.values[i][j] = val;
+            }
+        }
+        return m1;
+    }
+
+    // multiply a matrix with a constant
+    matrix operator* (double m)
+    {
+        matrix m1(this->num_rows, this->num_cols);
+        for (int i = 0; i < num_rows; i++) {
+            for (int j = 0; j < num_cols; j++) {
+                m1.values[i][j] = m * this->values[i][j];
+            }
+        }
+        return m1;
+    }
+
+     matrix operator= (const matrix& m)
+    {
+        this->num_cols = m.num_cols;
+        this->num_rows = m.num_rows;
+
+        for(int i=0; i<m.num_rows; i++){
+            for(int j=0; j<m.num_cols; j++){
+                this->values[i][j] = m.values[i][j];
+            }
+        }
+        return *this;
+    }
+
+    // multiply a 4x4 matrix with a homogeneous point and return the resulting point.
+    // usage: homogeneous_point p = m * p1;
+    // here, m is a 4x4 matrix, intended to be the transformation matrix
+    // p1 is the point on which the transformation is being made
+    // p is the resulting homogeneous point
+    homogeneous_point operator* (const homogeneous_point& p)
+    {
+        assert (this->num_rows == this->num_cols && this->num_rows == 4);
+
+        matrix m(4, 1);
+        m.values[0][0] = p.x;
+        m.values[1][0] = p.y;
+        m.values[2][0] = p.z;
+        m.values[3][0] = p.w;
+
+        matrix m1 = (*this)*m;
+        homogeneous_point p1(m1.values[0][0], m1.values[1][0], m1.values[2][0], m1.values[3][0]);
+        return p1;
+    }
+
+    // return the transpose of a matrix
+    matrix transpose()
+    {
+        matrix m(num_cols, num_rows);
+        for (int i = 0; i < num_rows; i++) {
+            for (int j = 0; j < num_cols; j++) {
+                m.values[j][i] = values[i][j];
+            }
+        }
+        return m;
+    }
+
+};
 
 /*
 A simple class to hold the color components, r, g, b of a certain shade.
@@ -573,7 +712,6 @@ void myDrawGrid(){
             a = x+i*widthOfCheckerBoard;
             b = y+j*widthOfCheckerBoard;
             drawSquare(a,b,widthOfCheckerBoard, toogle);
-            msq[i][j].setter(a,b,widthOfCheckerBoard, toogle);
             toogle = !toogle;
         }
         if(stop%2==0){  toogle=!toogle; }
@@ -622,10 +760,7 @@ void keyboardListener(unsigned char key, int x,int y){
             
         case '0':
             {
-                // resetPointColorBuffer();
-                myDestructor();
-                createDynamicArray();
-                imageGenerationSphere();
+                imageGeneration();
                 actuallyDrawImage();
                 break;
             }
@@ -754,8 +889,8 @@ void init(){
     glClearColor(0,0,0,0);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    //gluPerspective(80,1,1,1000);
-    gluPerspective(fovY, aspectRatio, disNearPlane, disFarPlane);
+    gluPerspective(80,1,1,1000);
+
 }
 
 void takeInput(){
@@ -821,15 +956,6 @@ void takeInput(){
 
 void doAfterTakingInput(){
     cout<<"do after taking input start\n";
-    cout<<"create array of square objs for checker board\n";
-    msq = new mySquare*[(int)numOfPixel+1];
-    for(int i=0; i<=(int)numOfPixel; i++){
-        msq[i] = new mySquare[(int)numOfPixel];
-    }
-        cout<<"do after taking input end\n";
-}
-
-void createDynamicArray(){
     pointBuffer = new homogeneous_point*[(int)numOfPixel+1];
     myColorBuffer = new Color*[(int)numOfPixel+1];
 
@@ -837,19 +963,11 @@ void createDynamicArray(){
         pointBuffer[i] = new homogeneous_point[(int)numOfPixel+1];
         myColorBuffer[i] = new Color[(int)numOfPixel+1];
     }
-}
-void myDestructor(){
-    for(int i=0; i<=numOfPixel; i++){
-        delete[] pointBuffer[i];
-        delete[] myColorBuffer[i];
-    }
-    delete[] pointBuffer;
-    delete[] myColorBuffer;
-    cout<<"Memory freed!\n";
+        cout<<"do after taking input end\n";
 }
 
-void imageGenerationCheckerBoard(){
-    cout<<"img generation checker board start!\n";
+void imageGeneration(){
+    cout<<"img generation start!\n";
     double screenHeight , screenWidth;
     HP a,b,c,d,e;
     // a = screenMidPoint;
@@ -862,49 +980,25 @@ void imageGenerationCheckerBoard(){
     d = a - u*(screenHeight/2) - r*(screenWidth/2);
     e = a - u*(screenHeight/2) + r*(screenWidth/2);
 
-    Vector CB(b.x-c.x,b.y-c.y,b.z-c.z ),
-     CD(d.x-c.x,d.y-c.y,d.z-c.z);
-
-    CB=CB/numOfPixel;
-    CD=CD/numOfPixel;
-
-    c = c +CB*0.5 + CD*0.5;
-
-    for(int i=0; i<numOfPixel; i++){
-        for(int j=0; j<numOfPixel; j++){
-            // get pointBuff i,j location
-            pointBuffer[i][j] = ((c + CB*i) + CD*j); 
-        }
-    }
 
 
-    HP O(0,0,0);
-
-}
-
-
-void imageGenerationSphere(){
-    cout<<"img generation sphere start!\n";
-    double screenHeight , screenWidth;
-    HP a,b,c,d,e;
-    // a = screenMidPoint;
-    screenHeight = 2*disNearPlane*tan(fovY*pi/360);
-    screenWidth  = 2*disNearPlane*tan(fovX*pi/360);
-
-    a = cameraPos + l*disNearPlane;
-    b = a + u*(screenHeight/2) + r*(screenWidth/2);
-    c = a + u*(screenHeight/2) - r*(screenWidth/2);
-    d = a - u*(screenHeight/2) - r*(screenWidth/2);
-    e = a - u*(screenHeight/2) + r*(screenWidth/2);
-
+    //cout<<"a b c d e\n";
+    //a.print(); b.print();
     cout<<"ok1\n";
     Vector CB(b.x-c.x,b.y-c.y,b.z-c.z ),
      CD(d.x-c.x,d.y-c.y,d.z-c.z);
+    //CB = b.minus(c);
+    //CD = d.minus(c);
+
+    cout<<"CB, CD 1\n";
+    //CB.print();CD.print();
 
     CB=CB/numOfPixel;
     CD=CD/numOfPixel;
 
     c = c +CB*0.5 + CD*0.5;
+    //cout<<"CB, CD 2\n";
+   // CB.print();CD.print();
 
     for(int i=0; i<numOfPixel; i++){
         for(int j=0; j<numOfPixel; j++){
@@ -964,7 +1058,7 @@ void imageGenerationSphere(){
       // remove it!!!
 
 
-    cout<<"img generation sphere end!\n";
+    cout<<"img generation end!\n";
 }
 
 
@@ -1027,7 +1121,6 @@ int main(int argc , char **argv){
     freopen("description.txt","r",stdin);
     takeInput();
     doAfterTakingInput();
-    createDynamicArray();
     //testDrivenDevelopment();
 
 	//
