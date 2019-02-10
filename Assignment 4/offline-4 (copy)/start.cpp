@@ -937,10 +937,12 @@ void imageGenerationCheckerBoard(){
 void imageGenerationSphere(){
     cout<<"img generation sphere start!\n";
     double screenHeight , screenWidth;
-    HP a,b,c,d,e;
+    HP a,b,c,d,e, f;
     // a = screenMidPoint;
     screenHeight = 2*disNearPlane*tan(fovY*pi/360);
     screenWidth  = 2*disNearPlane*tan(fovX*pi/360);
+    cout<<"Height "<<screenHeight<<"\n";
+    cout<<"Width "<<screenWidth<<"\n";
 
     a = cameraPos + l*disNearPlane;
     b = a + u*(screenHeight/2) + r*(screenWidth/2);
@@ -948,20 +950,19 @@ void imageGenerationSphere(){
     d = a - u*(screenHeight/2) - r*(screenWidth/2);
     e = a - u*(screenHeight/2) + r*(screenWidth/2);
 
-    cout<<"ok1\n";
-    Vector CB(b.x-c.x,b.y-c.y,b.z-c.z ),
-     CD(d.x-c.x,d.y-c.y,d.z-c.z);
-
-    CB=CB/numOfPixel;
-    CD=CD/numOfPixel;
-
-    c = c +CB*0.5 + CD*0.5;
-
+    f = c + (r*0.5)*(screenWidth/numOfPixel) - (u*0.5)*(screenHeight/numOfPixel);
+    cout<<"l, r, u\n";
+    l.print(); r.print(); u.print();
+    cout<<"A,B,C,D,E, F\n";
+    a.print(); b.print(); c.print(); d.print(); e.print(); f.print();
+    cout<<"-------------------\n";
+    
     for(int i=0; i<numOfPixel; i++){
         for(int j=0; j<numOfPixel; j++){
             // get pointBuff i,j location
-            pointBuffer[i][j] = ((c + CB*i) + CD*j); 
-        }
+            pointBuffer[i][j] = ((f + r*(i*(screenWidth/numOfPixel))) - u*(j*(screenHeight/numOfPixel))); 
+            //pointBuffer[i][j].print();
+        } //cout<<"\n";
     }
 
 
@@ -989,9 +990,9 @@ void imageGenerationSphere(){
                 
                 D = b1*b1 - 4*c1;
                 if(D>=0){
-                    
-                    t1 = (-b1+D)/(2*a1);
-                    t2 = (-b1-D)/(2*a1);
+                    D = sqrt(D);
+                    t1 = (-b1+(D))/(2*a1);
+                    t2 = (-b1-(D))/(2*a1);
                 
                     double dis1, dis2, dismin;
                     dis1 = Rd.getLength();

@@ -22,9 +22,9 @@ double disNearPlane, disFarPlane, fovX,fovY, aspectRatio, levelOfRecur, numOfPix
 void init();void animate();void drawAxes();void display();void keyboardListener(unsigned char key, int x,int y);void specialKeyListener(int key, int x,int y);void mouseListener(int button, int state, int x, int y);
 void drawSphere(double radius,int slices,int stacks, double cx, double cy, double cz);
 void myDrawSpotlight();void myDrawLight();void myDrawSpheres();void myDrawPyramids();
-void doAfterTakingInput();void createDynamicArray();
-void setPointBuffer(); void resetPointColorBuffer();
-void imageGenerationCheckerBoard();
+void doAfterTakingInput();void createDynamicArray();void setPointBuffer(); 
+void resetPointColorBuffer(); void imageGenerationCheckerBoard();
+
 class Vector{
 public:
     double x, y, z;
@@ -89,6 +89,10 @@ public:
         cout<<x<<" "<<y<<" "<<z<<" "<<fallOfParameter<<"\n";
     }
 };
+
+bool isRayInsideSphere(HP p ,Vector v); bool isRayInsideObj(HP p , Vector v);
+bool isRayInsidePyramid(HP p , Vector v);
+
 
 class spotlight{
 public:
@@ -350,8 +354,8 @@ void setPointBuffer(){
     // a = screenMidPoint;
     screenHeight = 2*disNearPlane*tan(fovY*pi/360);
     screenWidth  = 2*disNearPlane*tan(fovX*pi/360);
-    cout<<"Height "<<screenHeight<<"\n";
-    cout<<"Width "<<screenWidth<<"\n";
+    //cout<<"Height "<<screenHeight<<"\n";
+    //cout<<"Width "<<screenWidth<<"\n";
 
     a = cameraPos + l*disNearPlane;
     b = a + u*(screenHeight/2) + r*(screenWidth/2);
@@ -360,20 +364,17 @@ void setPointBuffer(){
     e = a - u*(screenHeight/2) + r*(screenWidth/2);
 
     f = c + (r*0.5)*(screenWidth/numOfPixel) - (u*0.5)*(screenHeight/numOfPixel);
-    cout<<"l, r, u\n";
-    l.print(); r.print(); u.print();
-    cout<<"A,B,C,D,E, F\n";
-    a.print(); b.print(); c.print(); d.print(); e.print(); f.print();
-    cout<<"-------------------\n";
+    //cout<<"l, r, u\n";
+    //l.print(); r.print(); u.print();
+    //cout<<"A,B,C,D,E, F\n";
+    //a.print(); b.print(); c.print(); d.print(); e.print(); f.print();
+    //cout<<"-------------------\n";
     
     for(int i=0; i<numOfPixel; i++){
         for(int j=0; j<numOfPixel; j++){
-            // get pointBuff i,j location
             pointBuffer[i][j] = ((f + r*(i*(screenWidth/numOfPixel))) - u*(j*(screenHeight/numOfPixel))); 
-            //pointBuffer[i][j].print();
-        } //cout<<"\n";
+        } 
     }
-    
 }
 
 void imageGenerationCheckerBoard(){
@@ -393,23 +394,134 @@ void imageGenerationCheckerBoard(){
                     double r123 = msq[i1][j1].r, g123 = msq[i1][j1].g, b123 = msq[i1][j1].b;
                     double disTemp =  t*Rd.getLength();
                     if(disTemp < pointBuffer[i][j].zbuffer ){
+                        Color diff,amb;
+                        
                         pointBuffer[i][j].zbuffer = disTemp;
-                        myColorBuffer[i][j].setColor(r123*ambient, g123*ambient, b123*ambient);
+                        amb.r = r123*ambient; amb.g = g123*ambient; amb.b = b123*ambient;
                         // ambient done !!! 
-
                         // phong , lambert to go! 
                         double phong = 0 , lambert = 0;
-                        for(int i=0; i<vl.size(); i++){
+                        
+
+                        for(int k=0; k<vl.size(); k++){
                             HP P(I.x, I.y, I.z); // s = vl[i];
                             // ps vector 
-                            Vector PS(vl[i].x - P.x, vl[i].y - P.y, vl[i].z - P.z); 
+                            Vector PS(vl[k].x - P.x, vl[k].y - P.y, vl[k].z - P.z); 
+                            if(isRayInsideObj(P, PS)){  continue;   }
+                            else{
+                                Vector toSource = PS;
+                                toSource.normalize();
+                                Vector N = u; // Since, Normal at P == Normal on XY plane == z axis == u
+                                double distance1 = PS.getLength();
+                                double scaling_factor = distance1*distance1*vl[k].fallOfParameter;
+                                scaling_factor = exp(-scaling_factor);
+
+                                lambert+= (toSource.dot(N))*scaling_factor;
+                                /*
+                                Vector R_; // reflection R = 2 (L.N)N – L 
+                                R_ = (N*toSource.dot(N))*2 - toSource;
+                                R_.normalize();
+                                phong+=pow(R_.dot(toSource), shinniness )*scaling_factor;
+                                */
+                            }
                         }
 
+                        for(int k=0; k<vsl.size(); k++){
+                            HP P(I.x, I.y, I.z); // s = vl[i];
+                            // ps vector 
+                            Vector PS(vsl[k].x - P.x, vsl[k].y - P.y, vsl[k].z - P.z); 
+                            double theta=0;
+                            Vector spotLightVec(vsl[k].lookx - vsl[k].x ,vsl[k].looky - vsl[k].y, vsl[k].lookz - vsl[k].z );
+                            Vector SP(-PS.x,-PS.y,-PS.z );
+                            theta = SP.dot(spotLightVec)/(SP.getLength() * spotLightVec.getLength());
+                            theta = acos(theta);
+                            if(isRayInsideObj(P, PS) || ( theta > vsl[k].angleInDeg )){  continue;   }
+                            else{
+                                Vector toSource = PS;
+                                toSource.normalize();
+                                Vector N = u; // Since, Normal at P == Normal on XY plane == z axis == u
+                                double distance1 = PS.getLength();
+                                double scaling_factor = distance1*distance1*vsl[k].fallOfParameter;
+                                scaling_factor = exp(-scaling_factor);
+                                lambert+= (toSource.dot(N))*scaling_factor;
+                            }
+                        }
+
+                        diff.r = diffuse*lambert*r123; diff.g = diffuse*lambert*g123; diff.b = diffuse*lambert*b123;
+                        myColorBuffer[i][j].setColor(amb.r+diff.r, amb.g+diff.g, amb.b+diff.b);
+                        //myColorBuffer[i][j].setColor(r123*ambient, g123*ambient, b123*ambient);
+                    
                     }
                 }
             }
         }
     } 
+}
+
+void imageGenerationSphere(){
+    double t = 0;
+    for(int i=0; i<numOfPixel; i++){
+        for(int j=0; j<numOfPixel; j++){
+            Vector R0(pointBuffer[i][j].x, pointBuffer[i][j].y, pointBuffer[i][j].z);
+            Vector Rd(pointBuffer[i][j].x - cameraPos.x,pointBuffer[i][j].y - cameraPos.y,pointBuffer[i][j].z - cameraPos.z );
+            Rd.normalize();
+             double a1=0,b1=0,c1=0,
+                t1=0,t2=0, D=0;
+            
+            for(int k=0; k<ms.size(); k++){
+                HP currCenter(ms[k].cx, ms[k].cy, ms[k].cz);
+                R0.x = R0.x - currCenter.x;R0.y = R0.y - currCenter.y; R0.z = R0.z - currCenter.z;
+               
+                a1 = 1; b1 = Rd.dot(R0);    b1 = b1*2;
+                c1 = R0.dot(R0) - ( (ms[k].r)*(ms[k].r));
+                D = b1*b1 - 4*c1;
+                if(D>=0){
+                    D = sqrt(D);
+                    t1 = (-b1+D)/(2*a1);    t2 = (-b1-D)/(2*a1);
+                
+                    double dis1, dis2, dis_minimus, t_minimus;
+                    dis1 = Rd.getLength();  dis2 = dis1;
+                    dis1 = abs(dis1*t1);    dis2 = abs(dis1*t2);
+
+                    if(dis1 < dis2 ){   dis_minimus = dis1; t_minimus = t1;     }
+                    else{   dis_minimus = dis2; t_minimus = t2;     }
+                    //now find appropriate i1, j1 like before!
+                    //dis_minimus = min(dis1, dis2);
+                    if(dis_minimus < pointBuffer[i][j].zbuffer){
+                        // R0.x = R0.x + currCenter.x;R0.y = R0.y + currCenter.y; R0.z = R0.z + currCenter.z;
+                        Vector I = R0 + Rd*t_minimus;
+                        I.x+=currCenter.x; I.y+=currCenter.y; I.z+=currCenter.z; 
+                        int i1 = ((int)I.x + 1000)/widthOfCheckerBoard;
+                        int j1 = ((int)I.y + 1000)/widthOfCheckerBoard;
+                        if(i1>=0 && i1<2000 && j1>=0 && j1<2000){
+                            pointBuffer[i][j].zbuffer = dis_minimus;
+                            //myColorBuffer[i][j].setColor(ms[k].cr*ms[k].ac,ms[k].cg*ms[k].ac,ms[k].cb*ms[k].ac );
+                            myColorBuffer[i][j].setColor(ms[k].cr,ms[k].cg,ms[k].cb );
+                        }       
+                    }
+                }
+            }
+        }
+    }
+}
+
+bool isRayInsideObj(HP p ,Vector v){    return ( (isRayInsidePyramid( p ,v)) || (isRayInsideSphere( p , v)) );  }
+bool isRayInsidePyramid( HP p ,Vector v ){  return false;    }
+bool isRayInsideSphere( HP p ,Vector v ){
+    for(int i=0; i<ms.size(); i++){
+        HP currCenter(ms[i].cx,ms[i].cy,ms[i].cz );
+        Vector R0;
+        R0.x = p.x - currCenter.x;R0.y = p.y - currCenter.y; R0.z = p.z - currCenter.z;
+        double a1=0,b1=0,c1=0,
+        t1=0,t2=0, D=0;
+        a1 = 1;
+        Vector Rd = v;
+        b1 = Rd.dot(R0);
+        b1 = b1*2;
+        c1 = R0.dot(R0) - ( (ms[i].r)*(ms[i].r));
+        D = b1*b1 - 4*c1;
+        if(D<0) {   return false;  }
+    }return true;
 }
 
 void resetPointColorBuffer(){
@@ -495,9 +607,7 @@ void keyboardListener(unsigned char key, int x,int y){
                 resetPointColorBuffer();
                 setPointBuffer();
                 imageGenerationCheckerBoard();
-                /*
                 imageGenerationSphere();
-                */
                actuallyDrawImage();
                 break;
             }
