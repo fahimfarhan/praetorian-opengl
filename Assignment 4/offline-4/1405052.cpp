@@ -373,14 +373,7 @@ void setPointBuffer(){
             //pointBuffer[i][j].print();
         } //cout<<"\n";
     }
-    int test = 4;
-    for(int i=0; i<test; i++){
-        for(int j=0; j<test; j++){
-            // get pointBuff i,j location
-            //pointBuffer[i][j] = ((f + r*i*(screenWidth/numOfPixel)) - u*j*(screenHeight/numOfPixel)); 
-            pointBuffer[i][j].print();
-        } cout<<"\n";
-    }
+    
 }
 
 void imageGenerationCheckerBoard(){
