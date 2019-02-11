@@ -24,6 +24,7 @@ void drawSphere(double radius,int slices,int stacks, double cx, double cy, doubl
 void myDrawSpotlight();void myDrawLight();void myDrawSpheres();void myDrawPyramids();
 void doAfterTakingInput();void createDynamicArray();void setPointBuffer(); 
 void resetPointColorBuffer(); void imageGenerationCheckerBoard();
+void imageGenerationPyramid();
 
 class Vector{
 public:
@@ -78,6 +79,19 @@ public:
     // Print the coordinates of a point. exists for testing purpose.
     void print(){   cout<<"(" << x << ", " << y << ", " << z << "), ";    }
 };
+
+class Matrix{
+public:
+    double a1,b1,c1,a2,b2,c2,a3,b3,c3;
+    Matrix(){}
+    void setter(double x1, double y1, double z1,double x2, double y2, double z2,double x3, double y3, double z3 ){
+        a1=x1; b1=y1; c1=z1;
+        a2=x2; b2=y2; c2=z2;
+        a3=x3; b3=y3; c3=z3;
+    }
+    double getDeterminant(){    return ((a1*b2*c3+a2*b3*c1+a3*b1*c2) - (a3*b2*c1+a1*b3*c2+a2*b1*c3));   }
+};
+
 Point **pointBuffer;
 HP cameraPos; Vector l,r,u;
 class light{
@@ -90,14 +104,20 @@ public:
     }
 };
 
-bool isRayInsideSphere(HP p ,Vector v); bool isRayInsideObj(HP p , Vector v);
-bool isRayInsidePyramid(HP p , Vector v);
+bool isRayInsideSphere(HP p ,Vector v,int spNo); bool isRayInsideObj(HP p , Vector v, int spNo, int pyNo);
+bool isRayInsidePyramid(HP p , Vector v,int pyNo);
 
 
 class spotlight{
 public:
     double x,y,z,fallOfParameter, lookx, looky, lookz, angleInDeg;
-    spotlight(){}   void printer(){  cout<<"Spotligght\n";   cout<<x<<" "<<y<<" "<<z<<" "<<fallOfParameter<<" "<<"\n";cout<<lookx<<" "<<looky<<" "<<lookz<<" "<<"\n"; cout<<angleInDeg<<"\n";}
+    spotlight(){}   void printer(){  cout<<"Spotlight\n";   cout<<x<<" "<<y<<" "<<z<<" "<<fallOfParameter<<" "<<"\n";cout<<lookx<<" "<<looky<<" "<<lookz<<" "<<"\n"; cout<<angleInDeg<<"\n";}
+};
+
+class MyTriangle{
+public:
+    HP a,b,c;
+    MyTriangle(HP a, HP b, HP c){ this->a = a; this->b=b; this->c=c;    }
 };
 
 class mySphere{
@@ -401,17 +421,17 @@ void imageGenerationCheckerBoard(){
                         // ambient done !!! 
                         // phong , lambert to go! 
                         double phong = 0 , lambert = 0;
-                        
 
                         for(int k=0; k<vl.size(); k++){
                             HP P(I.x, I.y, I.z); // s = vl[i];
                             // ps vector 
                             Vector PS(vl[k].x - P.x, vl[k].y - P.y, vl[k].z - P.z); 
-                            if(isRayInsideObj(P, PS)){  continue;   }
+                            if(isRayInsideObj(P, PS,-1,-1)){  continue;   }
                             else{
                                 Vector toSource = PS;
                                 toSource.normalize();
-                                Vector N = u; // Since, Normal at P == Normal on XY plane == z axis == u
+                                Vector N(0,0,1); // Since, Normal at P == Normal on XY plane == z axis
+                                N.normalize();
                                 double distance1 = PS.getLength();
                                 double scaling_factor = distance1*distance1*vl[k].fallOfParameter;
                                 scaling_factor = exp(-scaling_factor);
@@ -434,19 +454,20 @@ void imageGenerationCheckerBoard(){
                             Vector spotLightVec(vsl[k].lookx - vsl[k].x ,vsl[k].looky - vsl[k].y, vsl[k].lookz - vsl[k].z );
                             Vector SP(-PS.x,-PS.y,-PS.z );
                             theta = SP.dot(spotLightVec)/(SP.getLength() * spotLightVec.getLength());
-                            theta = acos(theta);
-                            if(isRayInsideObj(P, PS) || ( theta > vsl[k].angleInDeg )){  continue;   }
+                            theta = acos(theta); // radian 
+                            theta = theta*180/pi;
+                            if(isRayInsideObj(P, PS,-1,-1) || ( theta > vsl[k].angleInDeg )){  continue;   }
                             else{
                                 Vector toSource = PS;
                                 toSource.normalize();
-                                Vector N = u; // Since, Normal at P == Normal on XY plane == z axis == u
+                                Vector N(0,0,1); // Since, Normal at P == Normal on XY plane == z axis
+                                N.normalize();
                                 double distance1 = PS.getLength();
                                 double scaling_factor = distance1*distance1*vsl[k].fallOfParameter;
                                 scaling_factor = exp(-scaling_factor);
                                 lambert+= (toSource.dot(N))*scaling_factor;
                             }
                         }
-
                         diff.r = diffuse*lambert*r123; diff.g = diffuse*lambert*g123; diff.b = diffuse*lambert*b123;
                         myColorBuffer[i][j].setColor(amb.r+diff.r, amb.g+diff.g, amb.b+diff.b);
                         //myColorBuffer[i][j].setColor(r123*ambient, g123*ambient, b123*ambient);
@@ -495,32 +516,229 @@ void imageGenerationSphere(){
                         int j1 = ((int)I.y + 1000)/widthOfCheckerBoard;
                         if(i1>=0 && i1<2000 && j1>=0 && j1<2000){
                             pointBuffer[i][j].zbuffer = dis_minimus;
-                            //myColorBuffer[i][j].setColor(ms[k].cr*ms[k].ac,ms[k].cg*ms[k].ac,ms[k].cb*ms[k].ac );
-                            myColorBuffer[i][j].setColor(ms[k].cr,ms[k].cg,ms[k].cb );
+                            Color amb_sp , diff_sp , spec_sp;
+                            amb_sp.setColor(ms[k].cr*ms[k].ac,ms[k].cg*ms[k].ac,ms[k].cb*ms[k].ac);
+                            
+                            double lambert=0, phong=0;
+                            for(int x=0; x<vl.size(); x++){
+                                HP P(I.x, I.y, I.z); // s = vl[i];
+                                // ps vector 
+                                Vector PS(vl[x].x - P.x, vl[x].y - P.y, vl[x].z - P.z); 
+                                if( !isRayInsideObj(P,PS, k, -1) ){
+                                    Vector toSource = PS;
+                                    toSource.normalize();
+                                    Vector N(I.x-currCenter.x , I.y-currCenter.y, I.z-currCenter.z); // Since, Normal at P == Normal on XY plane == z axis
+                                    N.normalize();
+                                    double distance1 = PS.getLength();
+                                    double scaling_factor = distance1*distance1*vl[x].fallOfParameter;
+                                    scaling_factor = exp(-scaling_factor);
+
+                                    lambert+= (toSource.dot(N))*scaling_factor; 
+                                    Vector R_; // reflection R = 2 (L.N)N – L 
+                                    R_ = (N*toSource.dot(N))*2 - toSource;
+                                    R_.normalize();
+                                    phong+=pow(R_.dot(toSource), ms[k].shine )*scaling_factor;    
+                                }
+                            }
+
+                            for(int x=0; x<vsl.size(); x++){
+                                HP P(I.x, I.y, I.z); // s = vl[i];
+                                // ps vector 
+                                Vector PS(vsl[x].x - P.x, vsl[x].y - P.y, vsl[x].z - P.z); 
+                                double theta=0;
+                                Vector spotLightVec(vsl[x].lookx - vsl[x].x ,vsl[x].looky - vsl[x].y, vsl[x].lookz - vsl[x].z );
+                                Vector SP(-PS.x,-PS.y,-PS.z );
+                                theta = SP.dot(spotLightVec)/(SP.getLength() * spotLightVec.getLength());
+                                theta = acos(theta); // radian 
+                                theta = theta*180/pi;    
+                                if( ! (isRayInsideObj(P,PS, k, -1) || ( theta > vsl[x].angleInDeg ) ) ){
+                                    Vector toSource = PS;
+                                    toSource.normalize();
+                                    Vector N(I.x-currCenter.x , I.y-currCenter.y, I.z-currCenter.z); // Since, Normal at P == Normal on XY plane == z axis
+                                    N.normalize();
+                                    double distance1 = PS.getLength();
+                                    double scaling_factor = distance1*distance1*vsl[x].fallOfParameter;
+                                    scaling_factor = exp(-scaling_factor);
+
+                                    lambert+= (toSource.dot(N))*scaling_factor; 
+                                    Vector R_; // reflection R = 2 (L.N)N – L 
+                                    R_ = (N*toSource.dot(N))*2 - toSource;
+                                    R_.normalize();
+                                    phong+=pow(R_.dot(toSource), ms[k].shine )*scaling_factor;    
+                                }
+                            }
+                            diff_sp.r = ms[k].dc*lambert*ms[k].cr;
+                            diff_sp.g = ms[k].dc*lambert*ms[k].cg;
+                            diff_sp.b = ms[k].dc*lambert*ms[k].cb;
+
+                            spec_sp.r = ms[k].sc*phong*ms[k].cr;
+                            spec_sp.g = ms[k].sc*phong*ms[k].cg;
+                            spec_sp.b = ms[k].sc*phong*ms[k].cb;
+                            myColorBuffer[i][j].setColor(amb_sp.r+diff_sp.r+spec_sp.r ,
+                                                        amb_sp.g+diff_sp.g+spec_sp.g ,
+                                                        amb_sp.b+diff_sp.b+spec_sp.b );
+                            //myColorBuffer[i][j].setColor(ms[k].cr,ms[k].cg,ms[k].cb );
                         }       
                     }
                 }
+                R0.x = R0.x + currCenter.x;R0.y = R0.y + currCenter.y; R0.z = R0.z + currCenter.z;
             }
         }
     }
 }
 
-bool isRayInsideObj(HP p ,Vector v){    return ( (isRayInsidePyramid( p ,v)) || (isRayInsideSphere( p , v)) );  }
-bool isRayInsidePyramid( HP p ,Vector v ){  return false;    }
-bool isRayInsideSphere( HP p ,Vector v ){
+void imageGenerationPyramid(){
+    double t = 0, alpha=0, beta=0, gamma=0;
+    for(int i=0; i<numOfPixel; i++){
+        for(int j=0; j<numOfPixel; j++){
+            Vector R0(pointBuffer[i][j].x, pointBuffer[i][j].y, pointBuffer[i][j].z);
+            Vector Rd(pointBuffer[i][j].x - cameraPos.x,pointBuffer[i][j].y - cameraPos.y,pointBuffer[i][j].z - cameraPos.z );
+            Rd.normalize();
+            for(int k=0; k< mp.size(); k++){
+                HP a,b,c,d,e, g;
+                double w = mp[k].w/2, h=mp[k].h;
+                g.setCoordinate(mp[k].px,mp[k].py,mp[k].pz+h/2 );
+                e.setCoordinate(mp[k].px,mp[k].py,mp[k].pz+h );
+                a.setCoordinate(mp[k].px-w , mp[k].py-w , mp[k].pz); b.setCoordinate(mp[k].px+w , mp[k].py-w , mp[k].pz);
+                c.setCoordinate(mp[k].px+w , mp[k].py+w , mp[k].pz); d.setCoordinate(mp[k].px-w , mp[k].py+w , mp[k].pz);
+                vector<MyTriangle> mt1;
+                MyTriangle x1(a,b,d),x2(b,c,d),x3(a,b,e),x4(b,c,e),x5(a,d,e),x6(c,d,e);
+                mt1.push_back(x1); mt1.push_back(x2); mt1.push_back(x3);
+                mt1.push_back(x4); mt1.push_back(x5); mt1.push_back(x6);
+                for(int l=0; l<6; l++){
+                    t = 0, alpha=0, beta=0, gamma=0;
+                    Matrix A, Ab, Ag,At;
+                    // set A 
+                    At.setter(mt1[l].a.x - mt1[l].b.x, mt1[l].a.x - mt1[l].c.x, mt1[l].a.x - R0.x,
+                             mt1[l].a.y - mt1[l].b.y, mt1[l].a.y - mt1[l].c.y, mt1[l].a.y - R0.y,
+                             mt1[l].a.z - mt1[l].b.z, mt1[l].a.z - mt1[l].c.z, mt1[l].a.z - R0.z );
+
+                    Ab.setter(mt1[l].a.x - R0.x, mt1[l].a.x - mt1[l].c.x, Rd.x,
+                              mt1[l].a.y - R0.y, mt1[l].a.y - mt1[l].c.y, Rd.y,
+                              mt1[l].a.z - R0.z, mt1[l].a.z - mt1[l].c.z, Rd.z );
+                    Ag.setter(mt1[l].a.x - mt1[l].b.x , mt1[l].a.x - R0.x, Rd.x, 
+                                mt1[l].a.y - mt1[l].b.y , mt1[l].a.y - R0.y, Rd.y, 
+                                mt1[l].a.z - mt1[l].b.z , mt1[l].a.z - R0.z, Rd.z );
+                    A.setter(mt1[l].a.x - mt1[l].b.x, mt1[l].a.x - mt1[l].c.x, Rd.x,
+                             mt1[l].a.y - mt1[l].b.y, mt1[l].a.y - mt1[l].c.y, Rd.y,
+                             mt1[l].a.z - mt1[l].b.z, mt1[l].a.z - mt1[l].c.z, Rd.z);
+                    
+                    try{ beta = Ab.getDeterminant()/A.getDeterminant(); }
+                    catch(exception& x){ beta = MY_INF; }
+                    try{ gamma = Ag.getDeterminant()/A.getDeterminant(); }
+                    catch(exception& x){ gamma = MY_INF; }
+                    try{ t = At.getDeterminant()/A.getDeterminant(); }
+                    catch(exception& x){ t = MY_INF; }
+                    // Intersection if beta + gamma < 1 , beta >0 , gamma > 0
+                    if( ( (beta+gamma) < 1) && (beta > 0) && (gamma > 0) ){
+                        if( abs(Rd.getLength()*t) < pointBuffer[i][j].zbuffer ){
+                            pointBuffer[i][j].zbuffer= abs(Rd.getLength()*t) ;
+                            Vector I = R0 + Rd*t;
+                            Color amb_sp , diff_sp , spec_sp;
+                            amb_sp.setColor(mp[k].cr*mp[k].ac,mp[k].cg*mp[k].ac,mp[k].cb*mp[k].ac);
+                            double lambert=0, phong=0;
+                            
+                            for(int x=0; x<vl.size(); x++){
+                                HP P(I.x, I.y, I.z); // s = vl[i];
+                                Vector PS(vl[x].x - P.x, vl[x].y - P.y, vl[x].z - P.z); 
+                                if( !isRayInsideObj(P,PS, -1, k) ){
+                                    Vector toSource = PS;
+                                    toSource.normalize();
+                                    // (p,b,c) => point normal form = > n = (p-b)x(p-c)
+                                    Vector A123(P.x-mt1[l].b.x, P.y-mt1[l].b.y,P.z-mt1[l].b.z);
+                                    Vector B123(P.x-mt1[l].c.x, P.y-mt1[l].c.y,P.z-mt1[l].c.z);
+                                    Vector N = A123.cross(B123);
+                                    N.normalize();
+                                    // N or -N verify ?
+                                    Vector GP(P.x-g.x, P.y-g.y, P.z-g.z);
+                                    if( (GP.dot(N))/(GP.getLength()*N.getLength() )<0  ){
+                                        N.x = -N.x; N.y=-N.y; N.z = -N.z; // N = -N;
+                                    }
+                                    double distance1 = PS.getLength();
+                                    double scaling_factor = distance1*distance1*vl[x].fallOfParameter;
+                                    scaling_factor = exp(-scaling_factor);
+
+                                    lambert+= (toSource.dot(N))*scaling_factor; 
+                                    Vector R_; // reflection R = 2 (L.N)N – L 
+                                    R_ = (N*toSource.dot(N))*2 - toSource;
+                                    R_.normalize();
+                                    phong+=pow(R_.dot(toSource), mp[k].shine )*scaling_factor;
+
+                                }
+                            }
+
+                            for(int x=0; x<vsl.size(); x++){
+                                HP P(I.x, I.y, I.z); // s = vl[i];
+                                Vector PS(vsl[x].x - P.x, vsl[x].y - P.y, vsl[x].z - P.z); 
+                                                                double theta=0;
+                                Vector spotLightVec(vsl[x].lookx - vsl[x].x ,vsl[x].looky - vsl[x].y, vsl[x].lookz - vsl[x].z );
+                                Vector SP(-PS.x,-PS.y,-PS.z );
+                                theta = SP.dot(spotLightVec)/(SP.getLength() * spotLightVec.getLength());
+                                theta = acos(theta); // radian 
+                                theta = theta*180/pi;    
+
+                                if( !( isRayInsideObj(P,PS, -1, k)|| ( theta > vsl[x].angleInDeg ) ) ){
+                                    Vector toSource = PS;
+                                    toSource.normalize();
+                                    // (p,b,c) => point normal form = > n = (p-b)x(p-c)
+                                    Vector A123(P.x-mt1[l].b.x, P.y-mt1[l].b.y,P.z-mt1[l].b.z);
+                                    Vector B123(P.x-mt1[l].c.x, P.y-mt1[l].c.y,P.z-mt1[l].c.z);
+                                    Vector N = A123.cross(B123);
+                                    N.normalize();
+                                    // N or -N verify ?
+                                    Vector GP(P.x-g.x, P.y-g.y, P.z-g.z);
+                                    if( (GP.dot(N))/(GP.getLength()*N.getLength() )<0  ){
+                                        N.x = -N.x; N.y=-N.y; N.z = -N.z; // N = -N;
+                                    }
+                                    double distance1 = PS.getLength();
+                                    double scaling_factor = distance1*distance1*vsl[x].fallOfParameter;
+                                    scaling_factor = exp(-scaling_factor);
+
+                                    lambert+= (toSource.dot(N))*scaling_factor; 
+                                    Vector R_; // reflection R = 2 (L.N)N – L 
+                                    R_ = (N*toSource.dot(N))*2 - toSource;
+                                    R_.normalize();
+                                    phong+=pow(R_.dot(toSource), mp[k].shine )*scaling_factor;
+
+                                }
+                            }
+                            diff_sp.r = mp[k].dc*lambert*mp[k].cr;
+                            diff_sp.g = mp[k].dc*lambert*mp[k].cg;
+                            diff_sp.b = mp[k].dc*lambert*mp[k].cb;
+
+                            spec_sp.r = mp[k].sc*phong*mp[k].cr;
+                            spec_sp.g = mp[k].sc*phong*mp[k].cg;
+                            spec_sp.b = mp[k].sc*phong*mp[k].cb;
+                            myColorBuffer[i][j].setColor(amb_sp.r+diff_sp.r+spec_sp.r ,
+                                                        amb_sp.g+diff_sp.g+spec_sp.g ,
+                                                        amb_sp.b+diff_sp.b+spec_sp.b );
+                        }
+                    } 
+                }
+            }
+        } 
+    }
+}
+
+bool isRayInsideObj(HP p ,Vector v, int spNo=(-1) , int pyNo=(-1) ){    return ( (isRayInsidePyramid( p ,v, pyNo)) || (isRayInsideSphere( p , v, spNo)) );  }
+bool isRayInsidePyramid( HP p ,Vector v, int pyNo=(-1) ){  return false;    }
+bool isRayInsideSphere( HP p ,Vector v, int spNo=(-1) ){
     for(int i=0; i<ms.size(); i++){
-        HP currCenter(ms[i].cx,ms[i].cy,ms[i].cz );
-        Vector R0;
-        R0.x = p.x - currCenter.x;R0.y = p.y - currCenter.y; R0.z = p.z - currCenter.z;
-        double a1=0,b1=0,c1=0,
-        t1=0,t2=0, D=0;
-        a1 = 1;
-        Vector Rd = v;
-        b1 = Rd.dot(R0);
-        b1 = b1*2;
-        c1 = R0.dot(R0) - ( (ms[i].r)*(ms[i].r));
-        D = b1*b1 - 4*c1;
-        if(D<0) {   return false;  }
+        if(i != spNo){
+            HP currCenter(ms[i].cx,ms[i].cy,ms[i].cz );
+            Vector R0;
+            R0.x = p.x - currCenter.x;R0.y = p.y - currCenter.y; R0.z = p.z - currCenter.z;
+            double a1=0,b1=0,c1=0,
+            t1=0,t2=0, D=0;
+            a1 = 1;
+            Vector Rd = v;
+            b1 = Rd.dot(R0);
+            b1 = b1*2;
+            c1 = R0.dot(R0) - ( (ms[i].r)*(ms[i].r));
+            D = b1*b1 - 4*c1;
+            if(D<0) {   return false;  }
+        }
+
     }return true;
 }
 
@@ -608,7 +826,8 @@ void keyboardListener(unsigned char key, int x,int y){
                 setPointBuffer();
                 imageGenerationCheckerBoard();
                 imageGenerationSphere();
-               actuallyDrawImage();
+                imageGenerationPyramid();
+                actuallyDrawImage();
                 break;
             }
 		default:
