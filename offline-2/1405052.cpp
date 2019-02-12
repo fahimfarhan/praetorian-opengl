@@ -1,5 +1,5 @@
 #include <bits/stdc++.h>
-
+#include <time.h>
 #ifdef _WIN32
 
 #include<stdio.h>
@@ -9,11 +9,10 @@
 
 #include <windows.h>
 #include <glut.h>
-
-#endif
-
+#else
 #include "GL/freeglut.h"
 #include "GL/gl.h"
+#endif
 
 using namespace std;
 
@@ -21,6 +20,9 @@ using namespace std;
 
 void initCurve();
 void drawHermitCurve();
+void pointUpdate();
+void drawProjectile();
+void drawSquare();
 
 int myState = 0;
 
@@ -31,7 +33,33 @@ struct point2d
 
 struct point2d cp[200];
 struct point2d dp[200][4][11];
+
+struct point2d pu[20];
+struct point2d projectile;
+bool showProjectile = false;
+double at=0;
+int point_update=0;
+
 int cpidx = 0;
+
+void drawProjectile(){
+	if(showProjectile){
+		int segment = at/10;
+		int index = (int)at%10;
+
+		glColor3f(0, 0, 1);
+        glPushMatrix();
+        {
+            glTranslatef(dp[segment][0][index].x, dp[segment][0][index].y, 0);
+            drawSquare();
+        }
+        glPopMatrix();
+		//sleep(500);
+		int dummy = 0; 
+		//for(int i=0; i<INT_MAX; i++){ dummy++;}
+
+	}
+}
 
 void drawSquare()
 {
@@ -50,7 +78,14 @@ void keyboardListener(unsigned char key, int x,int y){
 
         case '1':
 			break;
-
+		case 'u':
+			myState = 2;
+			break;
+		case 'a':
+			showProjectile = !showProjectile;
+			break;
+ 		case 'g':
+			break;
 		default:
 			break;
 	}
@@ -99,6 +134,16 @@ void mouseListener(int button, int state, int x, int y){	//x, y is the x-y of th
 					cp[cpidx].y = (double)(600 - y);
 					cpidx = (cpidx+1)%200;
 				}
+			}else if(myState == 2){
+					if(state == GLUT_DOWN){		// 2 times?? in ONE click? -- solution is checking DOWN or UP
+						pu[point_update].x = (double)x;
+						pu[point_update].y =  (double)(600 - y);
+						point_update++; // = (point_update+1)%2;
+						if(point_update == 2){
+							point_update = 0;
+							myState = 3;
+						}
+					}
 			}
 			
 			break;
@@ -174,16 +219,11 @@ void initCurve(){
 		by = -3*y1 +3*y4-2*dy1-dy4;
 		cy = dy1;
 		dy = y1;
+		double t = 0;
 
-	   // initialize dp 
-	    dp[k][0][0].x = x1;
-		dp[k][0][0].y = y1;
-		dp[k][0][9].x = x4;
-		dp[k][0][9].y = y4; 
-
-		
-
-		double delta = .1, delta2 = delta*delta, delta3 = delta2*delta;
+		/*FAILED!!!*/
+/*
+	   double delta = .1, delta2 = delta*delta, delta3 = delta2*delta;
 
 		double dfx = ax*delta3 + bx*delta3 + cx*delta;
 		double dfx2 = 6*ax*delta3 +2*bx*delta2;
@@ -200,20 +240,30 @@ void initCurve(){
 		dp[k][01][0].y = dfy;
 		dp[k][02][0].y = dfy2;
 		dp[k][03][0].y = dfy3;
+		*/
 
-		for(int i=1; i<9; i++){
-			dp[k][3][i].x = dp[k][3][i-1].x + dfx3;
-			dp[k][2][i].x = dp[k][2][i-1].x + dp[k][3][i-1].x ;
-			dp[k][1][i].x = dp[k][1][i-1].x + dp[k][2][i-1].x ;
-			dp[k][0][i].x = dp[k][0][i-1].x + dp[k][1][i-1].x ;
+	   // initialize dp
+	   for(int i=0; i<4; i++){  // 4 er jaygay 10 hobe
+		    dp[k][0][i].x = ax*t*t*t + bx*t*t + cx*t + dx; 
+			dp[k][0][i].y = ay*t*t*t + by*t*t + cy*t + dy; 
+			t+=.1;
+	   } 
+		// if fails , comment out below
+	   for(int i=1; i<4; i++){
+		   for(int j=0; j<4-i; j++){
+			dp[k][i][j].x = dp[k][i-1][j+1].x - dp[k][i-1][j].x;
+			dp[k][i][j].y = dp[k][i-1][j+1].y - dp[k][i-1][j].y;
+		   }
+	   }
 
-			dp[k][3][i].y = dp[k][3][i-1].y + dfy3;
-			dp[k][2][i].y = dp[k][2][i-1].y + dp[k][3][i-1].y ;
-			dp[k][1][i].y = dp[k][1][i-1].y + dp[k][2][i-1].y ;
-			dp[k][0][i].y = dp[k][0][i-1].y + dp[k][1][i-1].y ;
-
-		} 
-
+	   for(int i=1; i<10; i++){	dp[k][3][i] = dp[k][3][i-1]; }
+	   for(int i=2; i>=0; i--){
+		   for(int j=1; j<10; j++){
+			    dp[k][i][j].x = dp[k][i+1][j-1].x + dp[k][i][j-1].x;
+				dp[k][i][j].y = dp[k][i+1][j-1].y + dp[k][i][j-1].y;
+		   }
+	   }
+	    
 
 	}
 
@@ -238,8 +288,24 @@ void drawHermitCurve(){
 			glVertex3f(dp[k][0][i+1].x,dp[k][0][i+1].y,0);
 			glEnd();
 		}
+		glBegin(GL_LINES);
+			glVertex3f(dp[k][0][9].x,dp[k][0][9].y,0);
+			glVertex3f(dp[(k+1)%num][0][0].x,dp[(k+1)%num][0][0].y,0);
+			glEnd();
 	    
 	}
+}
+
+void pointUpdate(){
+	int distance = INT_MAX;
+	int index = 0;
+	for(int i=0; i<cpidx; i++){
+		int temp = abs(cp[i].x - pu[0].x)  + abs(cp[i].y - pu[0].y);
+		if(temp<distance){ distance = temp; index = i; }
+
+	}
+	cp[index].x = pu[1].x;
+	cp[index].y = pu[1].y;
 }
 
 void display(){
@@ -276,13 +342,19 @@ void display(){
 	/ Add your objects from here
 	****************************/
 	//add objects
-if(myState != 0){
-	initCurve();
-					drawHermitCurve();
+	if(myState == 1){
+		initCurve();
+		drawHermitCurve();
 
-}
+	}else if(myState == 3){
+		pointUpdate();
+		myState = 1;	
+	}
 	//drawAxes();
 
+	if(showProjectile){
+		drawProjectile();
+	}
 
 	int i;
 
@@ -305,7 +377,11 @@ if(myState != 0){
 
 void animate(){
 
-
+	if(showProjectile){ 
+		for(int i=0; i<INT_MAX/512; i++){ };
+		at = (at + .01); 
+		if(at >= (cpidx/2*10) ) at = 0;
+	}
 	//codes for any changes in Models, Camera
 	glutPostRedisplay();
 }
